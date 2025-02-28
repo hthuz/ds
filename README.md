@@ -10,9 +10,15 @@ A minimal deepseek conversation cli.
 
 ## Setup
 
-Clone the repo and cd to the repo  
+```
+git clone https://github.com/hthuz/ds
+cd ds
+```
 Put Deepseek API key in `.dstemplate` and rename it into `.ds`  
-Run using `go run main.go`
+
+```
+go run main.go
+```
 
 
 ## Usage
