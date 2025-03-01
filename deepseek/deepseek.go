@@ -20,13 +20,13 @@ func NewDeepSeek(apipath string) *DeepSeek {
 	}
 }
 func (d *DeepSeek) Conversation() {
-	reader := bufio.NewReader(os.Stdin)
 
 	req := NewDSRequest(d.api)
 
+	userReader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("> ")
-		userInput, _ := reader.ReadString('\n')
+		userInput, _ := userReader.ReadString('\n')
 		userInput = strings.TrimSpace(userInput)
 		if strings.ToLower(userInput) == "quit" || strings.ToLower(userInput) == "exit" {
 			fmt.Println("Bye")
@@ -43,6 +43,7 @@ func (d *DeepSeek) Conversation() {
 		req.AddUserMsg(userInput)
 		reader, writer := io.Pipe()
 		go req.Send(writer)
+		// go req.SimulateSend(writer)
 
 		buf := make([]byte, 1024)
 		for {
@@ -50,7 +51,6 @@ func (d *DeepSeek) Conversation() {
 			if err != nil {
 				if err == io.EOF {
 					fmt.Println()
-					// log.Println("stream closed")
 					break
 				}
 				log.Fatal("error reading from stream", err)
@@ -75,7 +75,6 @@ func (d *DeepSeek) QueryOnce() {
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println()
-				// log.Println("stream closed")
 				break
 			}
 			log.Fatal("error reading from stream", err)

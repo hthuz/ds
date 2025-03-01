@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type DSRequest struct {
@@ -63,13 +64,37 @@ func (r *DSRequest) AddAssistantMsg(content string) {
 	})
 }
 
+func (r *DSRequest) SimulateSend(respWriter *io.PipeWriter) {
+
+	fmt.Println(r.Messages)
+
+	defer respWriter.Close()
+
+	ch := make(chan string)
+	msgs := strings.Split("This is a test message for simulate response from deepseek", " ")
+	go func() {
+		defer close(ch)
+		for _, msg := range msgs {
+			ch <- msg + " "
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	for data := range ch {
+		_, err := respWriter.Write([]byte(data))
+		if err != nil {
+			log.Fatal("error writing resp", err)
+		}
+	}
+
+}
+
 func (r *DSRequest) Send(respWriter *io.PipeWriter) {
 
 	url := "https://api.deepseek.com/chat/completions"
 	method := "POST"
 	assistantContent := ""
 
-	// Marshal the data into JSON
 	jsonData, err := json.Marshal(r.Messages)
 	if err != nil {
 		fmt.Println("Error marshalling to JSON:", err)
@@ -109,7 +134,6 @@ func (r *DSRequest) Send(respWriter *io.PipeWriter) {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", r.Api))
 
-	// return
 	res, err := client.Do(req)
 	if err != nil {
 		log.Println("send req error:", err)
@@ -127,28 +151,23 @@ func (r *DSRequest) Send(respWriter *io.PipeWriter) {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
-				// log.Println("Server closed the connection")
 				r.AddAssistantMsg(assistantContent)
 				respWriter.Close()
 				break
 			}
 			log.Fatalf("Error reading response: %v", err)
 		}
-		// fmt.Printf("%s\n", line)
-		// continue
 
 		line = bytes.TrimSpace(line)
 
 		// empty line is reached, meaining end of an event
 		if len(line) == 0 {
-			// fmt.Println("Event received")
 			continue
 		}
 
 		if !bytes.HasPrefix(line, []byte("data:")) {
 			continue
 		}
-		// 提取数据部分
 		data := bytes.TrimSpace(line[5:])
 		if bytes.Equal(data, []byte("[DONE]")) {
 			continue
